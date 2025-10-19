@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-# 별자리 매핑
+# ♈ 별자리 매핑
 ZODIAC_SIGNS = {
     "♈": "Aries", "♉": "Taurus", "♊": "Gemini", "♋": "Cancer",
     "♌": "Leo", "♍": "Virgo", "♎": "Libra", "♏": "Scorpio",
@@ -9,7 +9,7 @@ ZODIAC_SIGNS = {
 }
 SIGN_KEYS = list(ZODIAC_SIGNS.values())
 
-# 오브 범위 (분 단위)
+# 🌙 Aspect별 orb 범위 (분 단위)
 ORB_RANGES = {
     "Conjunction": 480, "Opposition": 480,
     "Trine1": 360, "Trine2": 360,
@@ -35,7 +35,7 @@ ORB_RANGES = {
     "Quincunx1": 180, "Quincunx2": 180,
 }
 
-# 위치값 파싱 (예: ♊ 10°46′ → 분 단위)
+# ♑ 위치값 파싱 (예: ♊ 10°46′ → 분 단위)
 def parse_position(value):
     if not isinstance(value, str):
         return None
@@ -50,7 +50,7 @@ def parse_position(value):
     except Exception:
         return None
 
-# Aspects 시트 로드
+# 📚 Aspects 시트 로드
 @st.cache_data
 def load_aspects():
     df = pd.read_excel("Aspects.xlsx", sheet_name="Aspects")
@@ -60,16 +60,17 @@ def load_aspects():
 
 df_aspects = load_aspects()
 
-# 행 → 분 단위 변환
+# 🌞 별자리 → 분 단위 변환
 def to_row_index(sign, degree, minute):
     sign_index = SIGN_KEYS.index(sign)
     return sign_index * 1800 + degree * 60 + minute
 
-# Streamlit UI
-st.title("💞 Synastry Aspect Mapper (Lookup Ver.)")
-st.caption("두 사람의 위치를 기반으로 Aspect를 lookup 방식으로 계산합니다.")
 
-# 세션 초기화
+# 🧩 Streamlit UI
+st.title("💞 Synastry Aspect Mapper (Lookup Ver. Final)")
+st.caption("Aspects.xlsx의 실제 위치 데이터를 기반으로 Synastry를 계산합니다. 자기참조 및 오탐 제거 버전.")
+
+# 세션 상태 초기화
 for key in ["A_points", "B_points"]:
     if key not in st.session_state:
         st.session_state[key] = []
@@ -133,14 +134,18 @@ if st.button("🔍 Synastry Aspect 계산"):
     results = []
     for labelA, rowA in st.session_state.A_points:
         for labelB, rowB in st.session_state.B_points:
-            diff = abs(rowA - rowB)
-            diff = min(diff, 21600 - diff)  # 원형 순환 고려
+            if labelA == labelB:
+                continue  # 🔒 자기 자신(label 동일)은 무시
 
-            # Conjunction 처리
+            diff = abs(rowA - rowB)
+            diff = min(diff, 21600 - diff)  # 원형 구조 처리
+
+            # Conjunction 별도 처리
             if diff <= ORB_RANGES["Conjunction"]:
                 orb_val = diff / 60
                 results.append({
-                    "A": labelA, "B": labelB,
+                    "A": labelA,
+                    "B": labelB,
                     "Aspect": "Conjunction",
                     "Orb": f"{orb_val:.2f}°"
                 })
@@ -151,10 +156,9 @@ if st.button("🔍 Synastry Aspect 계산"):
                 if aspect not in df_aspects.columns:
                     continue
                 target_row = df_aspects.loc[rowA, aspect]
-                if pd.isna(target_row):
-                    continue
+                if pd.isna(target_row) or target_row == rowA:
+                    continue  # 🔒 자기 위치 lookup 제외
 
-                # 🎯 단순 row 위치 비교 — 물리적 lookup 전용
                 delta = abs(rowB - target_row)
                 delta = min(delta, 21600 - delta)
 
@@ -164,7 +168,8 @@ if st.button("🔍 Synastry Aspect 계산"):
                     if any(r for r in results if {r["A"], r["B"]} == {labelA, labelB} and r["Aspect"] == clean_aspect):
                         continue
                     results.append({
-                        "A": labelA, "B": labelB,
+                        "A": labelA,
+                        "B": labelB,
                         "Aspect": clean_aspect,
                         "Orb": f"{orb_val:.2f}°"
                     })
