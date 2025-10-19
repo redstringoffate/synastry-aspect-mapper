@@ -66,7 +66,8 @@ def to_row_index(sign, degree, minute):
     return sign_index * 1800 + degree * 60 + minute
 
 # Streamlit UI
-st.title("💞 Synastry Aspect Mapper")
+st.title("💞 Synastry Aspect Mapper (Lookup Ver.)")
+st.caption("두 사람의 위치를 기반으로 Aspect를 lookup 방식으로 계산합니다.")
 
 # 세션 초기화
 for key in ["A_points", "B_points"]:
@@ -135,44 +136,44 @@ if st.button("🔍 Synastry Aspect 계산"):
             diff = abs(rowA - rowB)
             diff = min(diff, 21600 - diff)  # 원형 순환 고려
 
-            for aspect, orb in ORB_RANGES.items():
-                # conjunction 처리
-                if aspect == "Conjunction" and diff <= orb:
-                    orb_val = diff / 60
-                    results.append({
-                        "A": labelA,
-                        "B": labelB,
-                        "Aspect": "Conjunction",
-                        "Orb": f"{orb_val:.2f}°"
-                    })
-                    continue
+            # Conjunction 처리
+            if diff <= ORB_RANGES["Conjunction"]:
+                orb_val = diff / 60
+                results.append({
+                    "A": labelA, "B": labelB,
+                    "Aspect": "Conjunction",
+                    "Orb": f"{orb_val:.2f}°"
+                })
+                continue
 
+            # Lookup 방식
+            for aspect, orb in ORB_RANGES.items():
                 if aspect not in df_aspects.columns:
                     continue
                 target_row = df_aspects.loc[rowA, aspect]
                 if pd.isna(target_row):
                     continue
 
-                # 🔥 수정된 계산식 — 실제 좌표 비교 방식
-                expected_pos = target_row % 21600
-                actual_pos = rowB % 21600
-                delta = abs(expected_pos - actual_pos)
+                # 🎯 단순 row 위치 비교 — 물리적 lookup 전용
+                delta = abs(rowB - target_row)
                 delta = min(delta, 21600 - delta)
 
                 if delta <= orb:
                     orb_val = delta / 60
-                    clean_name = ''.join([c for c in aspect if not c.isdigit()])
+                    clean_aspect = ''.join([c for c in aspect if not c.isdigit()])
+                    if any(r for r in results if {r["A"], r["B"]} == {labelA, labelB} and r["Aspect"] == clean_aspect):
+                        continue
                     results.append({
-                        "A": labelA,
-                        "B": labelB,
-                        "Aspect": clean_name,
+                        "A": labelA, "B": labelB,
+                        "Aspect": clean_aspect,
                         "Orb": f"{orb_val:.2f}°"
                     })
 
     if results:
-        df_results = pd.DataFrame(results)
         st.success("✅ Synastry 계산 완료!")
+        df_results = pd.DataFrame(results)
         st.dataframe(df_results, use_container_width=True)
-        st.download_button("📥 결과 CSV 다운로드", df_results.to_csv(index=False, encoding="utf-8-sig"), file_name="synastry_results.csv")
+        csv = df_results.to_csv(index=False, encoding="utf-8-sig")
+        st.download_button("📥 결과 CSV 다운로드", csv, file_name="synastry_results.csv")
     else:
         st.warning("⚠️ 성립되는 Synastry Aspect가 없습니다.")
