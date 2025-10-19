@@ -67,8 +67,7 @@ def to_row_index(sign, degree, minute):
 
 
 # 🧩 Streamlit UI
-st.title("💞 Synastry Aspect Mapper (Lookup Ver. Final)")
-st.caption("Aspects.xlsx의 실제 위치 데이터를 기반으로 Synastry를 계산합니다. 자기참조 및 오탐 제거 버전.")
+st.title("💞 Synastry Aspect Mapper")
 
 # 세션 상태 초기화
 for key in ["A_points", "B_points"]:
@@ -182,3 +181,4 @@ if st.button("🔍 Synastry Aspect 계산"):
         st.download_button("📥 결과 CSV 다운로드", csv, file_name="synastry_results.csv")
     else:
         st.warning("⚠️ 성립되는 Synastry Aspect가 없습니다.")
+
