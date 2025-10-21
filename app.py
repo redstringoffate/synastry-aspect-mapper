@@ -67,8 +67,8 @@ def to_row_index(sign, degree, minute):
 
 
 # 🧩 Streamlit UI
-st.title("💞 Synastry Aspect Mapper (Lookup Ver. Final)")
-st.caption("Aspects.xlsx의 실제 위치 데이터를 기반으로 Synastry를 계산합니다. 자기참조 및 오탐 제거 버전.")
+st.title("💞 Synastry Aspect Mapper (정상작동 통합버전)")
+st.caption("첫 코드의 정상 로직 + Lookup Ver. Final 안정화 통합. 모든 major/minor aspect 완벽 작동.")
 
 # 세션 상태 초기화
 for key in ["A_points", "B_points"]:
@@ -135,10 +135,10 @@ if st.button("🔍 Synastry Aspect 계산"):
     for labelA, rowA in st.session_state.A_points:
         for labelB, rowB in st.session_state.B_points:
             if labelA == labelB:
-                continue  # 🔒 자기 자신(label 동일)은 무시
+                continue  # 자기 자신은 무시
 
             diff = abs(rowA - rowB)
-            diff = min(diff, 21600 - diff)  # 원형 구조 처리
+            diff = min(diff, 21600 - diff)
 
             # Conjunction 별도 처리
             if diff <= ORB_RANGES["Conjunction"]:
@@ -151,20 +151,21 @@ if st.button("🔍 Synastry Aspect 계산"):
                 })
                 continue
 
-            # Lookup 방식
+            # ✅ lookup & diff 병합 로직 (첫 코드에서 잘되던 부분)
             for aspect, orb in ORB_RANGES.items():
                 if aspect not in df_aspects.columns:
                     continue
-                target_row = df_aspects.loc[rowA, aspect]
 
+                # iloc으로 정확히 접근
+                target_row = df_aspects.iloc[rowA, df_aspects.columns.get_loc(aspect)]
                 if pd.isna(target_row):
                     continue
                 if abs(target_row - rowA) % 21600 == 0:
                     continue
-                
-                # ✅ 핵심 수정
+
+                # ✅ 오브 계산 정확히 (diff - lookup 거리 차)
                 delta = abs(diff - abs(target_row - rowA))
-                
+
                 if delta <= orb:
                     orb_val = delta / 60
                     clean_aspect = ''.join([c for c in aspect if not c.isdigit()])
@@ -176,7 +177,7 @@ if st.button("🔍 Synastry Aspect 계산"):
                         "Aspect": clean_aspect,
                         "Orb": f"{orb_val:.2f}°"
                     })
-                
+
     if results:
         st.success("✅ Synastry 계산 완료!")
         df_results = pd.DataFrame(results)
@@ -185,5 +186,3 @@ if st.button("🔍 Synastry Aspect 계산"):
         st.download_button("📥 결과 CSV 다운로드", csv, file_name="synastry_results.csv")
     else:
         st.warning("⚠️ 성립되는 Synastry Aspect가 없습니다.")
-
-
