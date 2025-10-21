@@ -164,7 +164,9 @@ if st.button("🔍 Synastry Aspect 계산"):
                     continue
 
                 # ✅ 오브 계산 정확히 (diff - lookup 거리 차)
-                delta = abs(diff - abs(target_row - rowA))
+                delta = abs(rowB - target_row)
+                delta = min(delta, 21600 - delta)  # 원형 구조
+
 
                 if delta <= orb:
                     orb_val = delta / 60
@@ -186,3 +188,4 @@ if st.button("🔍 Synastry Aspect 계산"):
         st.download_button("📥 결과 CSV 다운로드", csv, file_name="synastry_results.csv")
     else:
         st.warning("⚠️ 성립되는 Synastry Aspect가 없습니다.")
+
