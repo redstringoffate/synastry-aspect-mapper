@@ -35,7 +35,7 @@ ORB_RANGES = {
     "Quincunx1": 180, "Quincunx2": 180,
 }
 
-# ♑ 위치 파싱 (예: ♊ 10°46′ → 분 단위 절대 위치)
+# ♑ 위치 파싱
 def parse_position(value):
     if not isinstance(value, str):
         return None
@@ -65,11 +65,14 @@ def to_row_index(sign, degree, minute):
     sign_index = SIGN_KEYS.index(sign)
     return sign_index * 1800 + degree * 60 + minute
 
-
-# ------------------------- Streamlit UI -------------------------
+# ------------------------- UI -------------------------
 
 st.title("💫 Synastry Aspect Analyzer")
-st.caption("두 사람의 천체 좌표를 입력하면, 기준 축(A)으로부터 aspect 일치 여부를 단순 lookup 방식으로 확인합니다.")
+st.caption("기준축(A) 또는 (B)을 선택하여 aspect를 조회합니다.")
+
+# 기준축 선택 스위치
+axis_choice = st.toggle("B를 기준축으로 설정", value=False)
+axis_label = "B" if axis_choice else "A"
 
 # 세션 초기화
 for key in ["A_points", "B_points"]:
@@ -80,7 +83,7 @@ colA, colB = st.columns(2)
 
 # --- A 입력 ---
 with colA:
-    st.subheader("🩷 Person A (기준 축)")
+    st.subheader("🩷 Person A")
     with st.form("A_form", clear_on_submit=True):
         label = st.text_input("Label (예: Sun)", key="A_label")
         sign = st.selectbox("Sign", SIGN_KEYS, key="A_sign")
@@ -105,7 +108,7 @@ with colA:
 
 # --- B 입력 ---
 with colB:
-    st.subheader("💙 Person B (비교 축)")
+    st.subheader("💙 Person B")
     with st.form("B_form", clear_on_submit=True):
         label = st.text_input("Label (예: Moon)", key="B_label")
         sign = st.selectbox("Sign", SIGN_KEYS, key="B_sign")
@@ -130,19 +133,28 @@ with colB:
 
 st.divider()
 
-# -------------------- Aspect 매칭 로직 --------------------
+# -------------------- Aspect 매칭 --------------------
 
 if st.button("🔍 Aspect 계산"):
     results = []
-    for labelA, rowA in st.session_state.A_points:
-        for labelB, rowB in st.session_state.B_points:
+
+    # 기준축에 따라 A/B 스왑
+    if axis_choice:
+        primary_points = st.session_state.B_points
+        secondary_points = st.session_state.A_points
+    else:
+        primary_points = st.session_state.A_points
+        secondary_points = st.session_state.B_points
+
+    for labelA, rowA in primary_points:
+        for labelB, rowB in secondary_points:
 
             # Conjunction 예외처리
             diff = abs(rowA - rowB)
             diff = min(diff, 21600 - diff)
             if diff <= ORB_RANGES["Conjunction"]:
                 orb_val = diff / 60
-                results.append({"A": labelA, "B": labelB, "Aspect": "Conjunction", "Orb": f"{orb_val:.2f}°"})
+                results.append({"Axis": axis_label, "Primary": labelA, "Secondary": labelB, "Aspect": "Conjunction", "Orb": f"{orb_val:.2f}°"})
                 continue
 
             for aspect, orb in ORB_RANGES.items():
@@ -159,11 +171,12 @@ if st.button("🔍 Aspect 계산"):
                 if delta <= orb:
                     orb_val = delta / 60
                     clean_aspect = ''.join([c for c in aspect if not c.isdigit()])
-                    if any(r for r in results if {r["A"], r["B"]} == {labelA, labelB} and r["Aspect"] == clean_aspect):
+                    if any(r for r in results if {r["Primary"], r["Secondary"]} == {labelA, labelB} and r["Aspect"] == clean_aspect):
                         continue
                     results.append({
-                        "A": labelA,
-                        "B": labelB,
+                        "Axis": axis_label,
+                        "Primary": labelA,
+                        "Secondary": labelB,
                         "Aspect": clean_aspect,
                         "Orb": f"{orb_val:.2f}°"
                     })
