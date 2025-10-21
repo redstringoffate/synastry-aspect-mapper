@@ -155,19 +155,16 @@ if st.button("🔍 Synastry Aspect 계산"):
             for aspect, orb in ORB_RANGES.items():
                 if aspect not in df_aspects.columns:
                     continue
-
-                # iloc으로 정확히 접근
                 target_row = df_aspects.iloc[rowA, df_aspects.columns.get_loc(aspect)]
                 if pd.isna(target_row):
                     continue
                 if abs(target_row - rowA) % 21600 == 0:
                     continue
-
-                # ✅ 오브 계산 정확히 (diff - lookup 거리 차)
+                
+                # ✅ 수정: 직접 비교
                 delta = abs(rowB - target_row)
-                delta = min(delta, 21600 - delta)  # 원형 구조
-
-
+                delta = min(delta, 21600 - delta)
+                
                 if delta <= orb:
                     orb_val = delta / 60
                     clean_aspect = ''.join([c for c in aspect if not c.isdigit()])
@@ -180,6 +177,7 @@ if st.button("🔍 Synastry Aspect 계산"):
                         "Orb": f"{orb_val:.2f}°"
                     })
 
+
     if results:
         st.success("✅ Synastry 계산 완료!")
         df_results = pd.DataFrame(results)
@@ -188,4 +186,5 @@ if st.button("🔍 Synastry Aspect 계산"):
         st.download_button("📥 결과 CSV 다운로드", csv, file_name="synastry_results.csv")
     else:
         st.warning("⚠️ 성립되는 Synastry Aspect가 없습니다.")
+
 
