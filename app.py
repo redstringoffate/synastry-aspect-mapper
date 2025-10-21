@@ -67,7 +67,8 @@ def to_row_index(sign, degree, minute):
 
 
 # 🧩 Streamlit UI
-st.title("💞 Synastry Aspect Mapper")
+st.title("💞 Synastry Aspect Mapper (Lookup Ver. Final)")
+st.caption("Aspects.xlsx의 실제 위치 데이터를 기반으로 Synastry를 계산합니다. 자기참조 및 오탐 제거 버전.")
 
 # 세션 상태 초기화
 for key in ["A_points", "B_points"]:
@@ -155,8 +156,13 @@ if st.button("🔍 Synastry Aspect 계산"):
                 if aspect not in df_aspects.columns:
                     continue
                 target_row = df_aspects.loc[rowA, aspect]
-                if pd.isna(target_row) or target_row == rowA:
-                    continue  # 🔒 자기 위치 lookup 제외
+                
+                if pd.isna(target_row):
+                    continue
+                # 자기 위치는 완전히 같은 값만 제외 (360도 차이는 포함)
+                if abs(target_row - rowA) % 21600 == 0:
+                    continue
+
 
                 delta = abs(rowB - target_row)
                 delta = min(delta, 21600 - delta)
@@ -181,4 +187,3 @@ if st.button("🔍 Synastry Aspect 계산"):
         st.download_button("📥 결과 CSV 다운로드", csv, file_name="synastry_results.csv")
     else:
         st.warning("⚠️ 성립되는 Synastry Aspect가 없습니다.")
-
