@@ -164,7 +164,7 @@ if st.button("🔍 Synastry Aspect 계산"):
                     continue
 
 
-                delta = abs(rowB - target_row)
+                delta = abs(diff - abs(target_row - rowA))
                 delta = min(delta, 21600 - delta)
 
                 if delta <= orb:
@@ -187,3 +187,4 @@ if st.button("🔍 Synastry Aspect 계산"):
         st.download_button("📥 결과 CSV 다운로드", csv, file_name="synastry_results.csv")
     else:
         st.warning("⚠️ 성립되는 Synastry Aspect가 없습니다.")
+
