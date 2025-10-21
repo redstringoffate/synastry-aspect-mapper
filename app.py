@@ -9,7 +9,7 @@ ZODIAC_SIGNS = {
 }
 SIGN_KEYS = list(ZODIAC_SIGNS.values())
 
-# 🌙 Aspect별 orb 범위 (분 단위)
+# 🌙 Aspect별 orb (분 단위)
 ORB_RANGES = {
     "Conjunction": 480, "Opposition": 480,
     "Trine1": 360, "Trine2": 360,
@@ -35,7 +35,7 @@ ORB_RANGES = {
     "Quincunx1": 180, "Quincunx2": 180,
 }
 
-# ♑ 위치값 파싱 (예: ♊ 10°46′ → 분 단위)
+# ♑ 위치 파싱 (예: ♊ 10°46′ → 분 단위 절대 위치)
 def parse_position(value):
     if not isinstance(value, str):
         return None
@@ -50,7 +50,7 @@ def parse_position(value):
     except Exception:
         return None
 
-# 📚 Aspects 시트 로드
+# 📘 Aspects 시트 로드
 @st.cache_data
 def load_aspects():
     df = pd.read_excel("Aspects.xlsx", sheet_name="Aspects")
@@ -60,17 +60,18 @@ def load_aspects():
 
 df_aspects = load_aspects()
 
-# 🌞 별자리 → 분 단위 변환
+# 🌞 별자리 → 분 단위
 def to_row_index(sign, degree, minute):
     sign_index = SIGN_KEYS.index(sign)
     return sign_index * 1800 + degree * 60 + minute
 
 
-# 🧩 Streamlit UI
-st.title("💞 Synastry Aspect Mapper (정상작동 통합버전)")
-st.caption("첫 코드의 정상 로직 + Lookup Ver. Final 안정화 통합. 모든 major/minor aspect 완벽 작동.")
+# ------------------------- Streamlit UI -------------------------
 
-# 세션 상태 초기화
+st.title("💫 Synastry Aspect Analyzer")
+st.caption("두 사람의 천체 좌표를 입력하면, 기준 축(A)으로부터 aspect 일치 여부를 단순 lookup 방식으로 확인합니다.")
+
+# 세션 초기화
 for key in ["A_points", "B_points"]:
     if key not in st.session_state:
         st.session_state[key] = []
@@ -79,7 +80,7 @@ colA, colB = st.columns(2)
 
 # --- A 입력 ---
 with colA:
-    st.subheader("🩷 Person A")
+    st.subheader("🩷 Person A (기준 축)")
     with st.form("A_form", clear_on_submit=True):
         label = st.text_input("Label (예: Sun)", key="A_label")
         sign = st.selectbox("Sign", SIGN_KEYS, key="A_sign")
@@ -104,7 +105,7 @@ with colA:
 
 # --- B 입력 ---
 with colB:
-    st.subheader("💙 Person B")
+    st.subheader("💙 Person B (비교 축)")
     with st.form("B_form", clear_on_submit=True):
         label = st.text_input("Label (예: Moon)", key="B_label")
         sign = st.selectbox("Sign", SIGN_KEYS, key="B_sign")
@@ -129,42 +130,32 @@ with colB:
 
 st.divider()
 
-# --- Synastry 계산 ---
-if st.button("🔍 Synastry Aspect 계산"):
+# -------------------- Aspect 매칭 로직 --------------------
+
+if st.button("🔍 Aspect 계산"):
     results = []
     for labelA, rowA in st.session_state.A_points:
         for labelB, rowB in st.session_state.B_points:
-            if labelA == labelB:
-                continue  # 자기 자신은 무시
 
+            # Conjunction 예외처리
             diff = abs(rowA - rowB)
             diff = min(diff, 21600 - diff)
-
-            # Conjunction 별도 처리
             if diff <= ORB_RANGES["Conjunction"]:
                 orb_val = diff / 60
-                results.append({
-                    "A": labelA,
-                    "B": labelB,
-                    "Aspect": "Conjunction",
-                    "Orb": f"{orb_val:.2f}°"
-                })
+                results.append({"A": labelA, "B": labelB, "Aspect": "Conjunction", "Orb": f"{orb_val:.2f}°"})
                 continue
 
-            # ✅ lookup & diff 병합 로직 (첫 코드에서 잘되던 부분)
             for aspect, orb in ORB_RANGES.items():
                 if aspect not in df_aspects.columns:
                     continue
+
                 target_row = df_aspects.iloc[rowA, df_aspects.columns.get_loc(aspect)]
                 if pd.isna(target_row):
                     continue
-                if abs(target_row - rowA) % 21600 == 0:
-                    continue
-                
-                # ✅ 수정: 직접 비교
+
                 delta = abs(rowB - target_row)
                 delta = min(delta, 21600 - delta)
-                
+
                 if delta <= orb:
                     orb_val = delta / 60
                     clean_aspect = ''.join([c for c in aspect if not c.isdigit()])
@@ -177,14 +168,11 @@ if st.button("🔍 Synastry Aspect 계산"):
                         "Orb": f"{orb_val:.2f}°"
                     })
 
-
     if results:
-        st.success("✅ Synastry 계산 완료!")
+        st.success("✅ Aspect 매칭 완료")
         df_results = pd.DataFrame(results)
         st.dataframe(df_results, use_container_width=True)
         csv = df_results.to_csv(index=False, encoding="utf-8-sig")
-        st.download_button("📥 결과 CSV 다운로드", csv, file_name="synastry_results.csv")
+        st.download_button("📥 CSV 다운로드", csv, file_name="aspects.csv")
     else:
-        st.warning("⚠️ 성립되는 Synastry Aspect가 없습니다.")
-
-
+        st.warning("⚠️ 성립하는 aspect가 없습니다.")
